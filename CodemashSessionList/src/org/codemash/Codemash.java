@@ -2,33 +2,32 @@ package org.codemash;
 
 import java.util.ArrayList;
 
-import org.simpleframework.xml.*;
-
-@Root(name="Sessions")
+//@Root(name="Sessions")
+@Deprecated
 public class Codemash {
-	@ElementList(inline=true)
+//	@ElementList(inline=true)
 	public ArrayList<Session> sessions;
 }
 
-@Root(name="Session")
+//@Root(name="Session")
 class Session {
-	@Element(required=false)
+//	@Element(required=false)
 	private String URI;
-	@Element(required=false)
+//	@Element(required=false)
 	private String Title;
-	@Element(required=false)
+//	@Element(required=false)
 	private String Abstract;
-	@Element(required=false)
+//	@Element(required=false)
 	private String SpeakerName;
-	@Element(required=false)
+//	@Element(required=false)
 	private String SpeakerURI;
-	@Element(required=false)
+//	@Element(required=false)
 	private String Start;
-	@Element(required=false)
+//	@Element(required=false)
 	private String Room;
-	@Element(required=false)
+//	@Element(required=false)
 	private String Technology;
-	@Element(required=false)
+//	@Element(required=false)
 	private String Difficulty;
 	
 	private Boolean Interested;

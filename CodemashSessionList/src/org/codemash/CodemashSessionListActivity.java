@@ -1,64 +1,87 @@
 package org.codemash;
 
-import org.simpleframework.xml.Serializer;
-import org.simpleframework.xml.core.Persister;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringWriter;
+import java.util.Scanner;
 
-import com.gravityworksdesign.AsyncHttpListener;
-import com.gravityworksdesign.GWUtil;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ListView;
 
-public class CodemashSessionListActivity extends Activity implements AsyncHttpListener {
-	private GWUtil util;
-	private Codemash codemash;
-	private final String URL = "http://codemash.org/rest/sessions";
+public class CodemashSessionListActivity extends Activity{
+	private final String URL = "http://www.codemash.org/rest/sessions.json";
+	private String sessionXML;
 	
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
-        
-        util = new GWUtil(getApplicationContext());
-        String sessionXML = util.getPreference(URL);
-        if(sessionXML.equals("")) {
-        		util.beginFetchFromUrl(URL, this, CodemashSessionListActivity.this);
-        		
-        }
-        else {
-        		parseSessions(sessionXML);
-        }
+        sessionXML = convertStreamToString(retrieveStream(URL));
+    }
+    public String convertStreamToString(InputStream is) { 
+        return new Scanner(is).useDelimiter("\\A").next();
     }
 
-	@Override
-	public void onAsyncComplete(String response) {
-		util.storePreference(URL, response);
-		parseSessions(response);
+	private InputStream retrieveStream(String url) {
+		DefaultHttpClient client = new DefaultHttpClient();
+		HttpGet getRequest = new HttpGet(url);
+		try {
+			HttpResponse getResponse = client.execute(getRequest);
+			final int statusCode = getResponse.getStatusLine().getStatusCode();
+			if (statusCode != HttpStatus.SC_OK) {
+				Log.w(getClass().getSimpleName(), "Error " + statusCode + " for URL " + url);
+				return null;
+			}
+			HttpEntity getResponseEntity = getResponse.getEntity();
+			return getResponseEntity.getContent();
+		}
+		catch (IOException e) {
+			getRequest.abort();
+			Log.w(getClass().getSimpleName(), "Error for URL " + url, e);
+		}
+		return null;
+	}
+
+	
+	private JSONArray getJSONObject() throws JSONException{
+		return new JSONArray(sessionXML);
 	}
 	
 	private void parseSessions(String xml) {
-		Serializer serializer = new Persister();
 		try {
-			codemash = serializer.read(Codemash.class, xml);
-			
 			ListView list = (ListView)findViewById(R.id.sessionList);
 			list.setTextFilterEnabled(true);
-			list.setAdapter(new SessionAdapter(getApplicationContext(), android.R.id.text1, codemash.sessions));
+			list.setAdapter(new JSONSessionAdapter(getApplicationContext(), getJSONObject(), JSONSessionAdapter.ViewStates.PARTIAL));
 			list.setOnItemClickListener(new OnItemClickListener() {
-		
-				
-				
 				@Override
 				public void onItemClick(AdapterView<?> parent, View view,
 						int pos, long id) {
+					JSONSessionAdapter jsa = null;
+					try{
+						jsa = new JSONSessionAdapter(getApplicationContext(), getJSONObject(), JSONSessionAdapter.ViewStates.PARTIAL);
+					}catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 					Intent detail = new Intent(getApplicationContext(), SessionDetails.class);
-					detail.putExtra("URI", codemash.sessions.get(pos).getURI());
+					detail.putExtra("position", pos);
+					detail.putExtra("JSONObject", sessionXML);
 					startActivity(detail);
 				}
 				
@@ -73,6 +96,5 @@ public class CodemashSessionListActivity extends Activity implements AsyncHttpLi
 	@Override
 	protected void onResume() {
 		super.onResume();
-		parseSessions(util.getPreference(URL));
 	}
 }
